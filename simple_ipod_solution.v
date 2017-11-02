@@ -226,11 +226,12 @@ wire    [3:0]   flash_mem_byteenable;
 wire 				    flash_mem_write;
 wire    [31:0]  flash_mem_writedata;
 wire 	  [5:0]   flash_mem_burstcount;
-wire            clock_22kHz, rst, go_now, restart, direction, pause;
+wire            clock_22kHz, rst, go_now, restart, direction, pause, finish;
 wire    [15:0]  data_out, adjust_speed;
 logic   [15:0]  display_crap;
 logic   [15:0]  display_shit;
 logic   [7:0]   audio_data;
+//logic           CLK_25;
 
 assign flash_mem_write = 1'b0;
 assign flash_mem_writedata = 32'b0;
@@ -242,11 +243,13 @@ syncronizer sync(1'b1, clock_22kHz, CLK_50M, go_now);
 
 freq_divider inst(CLK_50M, adjust_speed, clock_22kHz, restart);
 
+
+
 keyboard_control keyboard(CLK_50M, rst, kbd_received_ascii_code, direction, pause, restart);
 
-control_speed speed_change(CLK_50M, speed_down_event, speed_up_event, speed_reset_event, adjust_speed);
+control_speed speed_change(CLK_50M, speed_down_event, speed_up_event, speed_reset_event, adjust_speed, kbd_received_ascii_code);
 
-fsm_flash fsm1(CLK_50M, clock_22kHz, flash_mem_readdata, flash_mem_readdatavalid, flash_mem_address, flash_mem_read, flash_mem_byteenable, restart, pause, direction, data_out, go_now);
+fsm_flash fsm1(CLK_50M, clock_22kHz, flash_mem_readdata, flash_mem_readdatavalid, flash_mem_address, flash_mem_read, flash_mem_byteenable, restart, pause, direction, data_out, go_now, finish);
 
 flash flash_inst (
     .clk_clk                 (CLK_50M),
@@ -262,19 +265,21 @@ flash flash_inst (
     .flash_mem_byteenable    (flash_mem_byteenable)
 );
 
+  reg CLK_25;
+   
+   always @(posedge CLK_50M)
+   begin
+        CLK_25 <= !CLK_25;
+   end
+ picoblaze_template #(.clk_freq_in_hz  (25000000)) (
+        .led(LED[9:2]),
+        .clk(CLK_25),
+        .input_data(data_out[15:8]),
+        .led_0(LED[0]),
+        .interrupt(finish)
+        );
  
-//instantiating picoblaze_template using our readdatavalid flag as the interrupt trigger flag
-picoblaze_template
-#(
-.clk_freq_in_hz(25000000)
-)
-picoblaze_template_inst(
-                        .led({LED[2], LED[3], LED[4], LED[5], LED[6] ,LED[7], LED[8], LED[9]}),
-								.led0(LED[0]),
-                        .clk(clock_22kHz),
-                .input_data(data_out[15:8]),
-					 .interrup(flash_mem_readdatavalid)
-                 );
+
 //======================================================================================
 // 
 // Keyboard Interface
@@ -461,7 +466,7 @@ LCD_Scope_Encapsulated_pacoblaze_wrapper LCD_LED_scope(
 //=====================================================================================
 
 wire speed_up_event, speed_down_event;
-assign LEDR[9:0] = LED[9:0];
+
 //Generate 1 KHz Clock
 Generate_Arbitrary_Divided_Clk32 
 Gen_1KHz_clk
