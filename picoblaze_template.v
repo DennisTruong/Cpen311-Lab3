@@ -1,3 +1,4 @@
+
 `default_nettype none
  `define USE_PACOBLAZE
 module 
@@ -6,14 +7,14 @@ picoblaze_template
 parameter clk_freq_in_hz = 25000000
 ) (
 				output reg[7:0] led,
-				output reg led0,
             inout [7:0] lcd_d,
             output reg lcd_rs,
             output lcd_rw,
             output reg lcd_e,
 				input clk,
 				input [7:0] input_data,
-				input interrup
+        output reg led_0,
+        input interrupt
 			     );
 
 
@@ -23,7 +24,7 @@ parameter clk_freq_in_hz = 25000000
 //--
 //-- Signals used to connect KCPSM3 to program ROM and I/O logic
 //--
-reg [7:0] temp_led;
+
 wire[9:0]  address;
 wire[17:0]  instruction;
 wire[7:0]  port_id;
@@ -31,9 +32,15 @@ wire[7:0]  out_port;
 reg[7:0]  in_port;
 wire  write_strobe;
 wire  read_strobe;
-reg  interrupt;
+
 wire  interrupt_ack;
 wire  kcpsm3_reset;
+
+always @(posedge clk)
+  begin
+    if(write_strobe & port_id[6])
+      led_0 <= out_port;
+  end
 
 //--
 //-- Signals used to generate interrupt 
@@ -56,7 +63,7 @@ pacoblaze3 led_8seg_kcpsm
                   .out_port(out_port),
                .read_strobe(read_strobe),
                    .in_port(in_port),
-                 .interrupt(interrup),
+                 .interrupt(interrupt),
              .interrupt_ack(interrupt_ack),
                      .reset(kcpsm3_reset),
                        .clk(clk));
@@ -104,18 +111,7 @@ pacoblaze3 led_8seg_kcpsm
       end
  end
 
- always @ (posedge clk or posedge interrupt_ack)  //FF with clock "clk" and reset "interrupt_ack"
- begin
-      if (interrupt_ack) //if we get reset, reset interrupt in order to wait for next clock.
-            interrupt <= 0;
-      else
-		begin 
-		      if (event_1hz)   //clock enable
-      		      interrupt <= 1;
-          		else
-		            interrupt <= interrupt;
-      end
- end
+
 
 //  --
 //  ----------------------------------------------------------------------------------------------------------------------------------
@@ -147,12 +143,12 @@ end
   begin
 
         //LED is port 80 hex 
-        if (write_strobe & port_id[7]) begin  //clock enable 
+        if (write_strobe & port_id[7])  //clock enable 
           led <= out_port;
-       end
+       
 //        -- 8-bit LCD data output address 40 hex.
         if (write_strobe & port_id[6])  //clock enable
-          led0 <= out_port;
+          lcd_output_data <= out_port;
       
 //        -- LCD controls at address 20 hex.
         if (write_strobe & port_id[5]) //clock enable
@@ -163,8 +159,7 @@ end
         end
 
   end
-  
-  
+
 //  --
 //  ----------------------------------------------------------------------------------------------------------------------------------
 //  -- LCD interface  
