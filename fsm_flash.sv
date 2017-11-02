@@ -1,29 +1,31 @@
-module fsm_flash (CLK_50M, CLK_22K, data_in, mem_data_valid, address, start_read_memory, byteenable, reset, pause, direction, data_out, go_now);
+module fsm_flash (CLK_50M, CLK_22K, data_in, mem_data_valid, address, start_read_memory, byteenable, reset, pause, direction, data_out, go_now, finish);
 	input [31:0] data_in;
 	output logic [15:0] data_out;
 	input mem_data_valid, CLK_50M, reset, CLK_22K, go_now, pause, direction;
 	output [22:0] address;
 	output logic start_read_memory;
 	output logic [3:0] byteenable;
+	output logic finish;
 
-	logic [11:0] state;
+	logic [12:0] state;
 	logic get_new_address, odd_addr, even_addr, got_new_address;
 
-	parameter idle = 					12'b0000_0000_0000;
-	parameter wait_state = 				12'b0001_0000_0000;
-	parameter get_addressfsm_on = 		12'b0010_0010_0000;
-	parameter get_addressfsm_off = 		12'b0011_0001_1111;
-	parameter odd_address = 			12'b0100_1000_0000;
-	parameter even_or_odd = 			12'b0101_0000_0000;
-	parameter even_address = 			12'b0110_0100_0000;
-	parameter clock_Wait =				12'b0111_0000_0000;
-	parameter clock_Wait2 = 			12'b1000_0000_0000;
+	parameter idle = 					13'b00000_0000_0000;
+	parameter wait_state = 				13'b00001_0000_0000;
+	parameter get_addressfsm_on = 		13'b00010_0010_0000;
+	parameter get_addressfsm_off = 		13'b00011_0001_1111;
+	parameter odd_address = 			13'b10100_1000_0000;
+	parameter even_or_odd = 			13'b00101_0000_0000;
+	parameter even_address = 			13'b10110_0100_0000;
+	parameter clock_Wait =				13'b00111_0000_0000;
+	parameter clock_Wait2 = 			13'b01000_0000_0000;
 	
 	assign	byteenable = 				state[3:0]; // bits for flash
 	assign	start_read_memory =			state[4]; // read signal for flash
 	assign	get_new_address = 			state[5]; // signal for starting get_address fsm
 	assign	odd_addr = 					state[7]; // odd address bit
 	assign 	even_addr = 				state[6]; // even address bit
+	assign  finish = 					state[12];
 	
 
 	get_address getNow(CLK_50M, reset, direction, address, get_new_address, got_new_address); // instaintiating get_address to get address
