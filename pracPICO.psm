@@ -21,16 +21,16 @@
                     ;**************************************************************************************
                     ;
                     ;
-                    CONSTANT ISR_preserve_s0, 01        ;Preserve s0 contents during ISR
-                    CONSTANT ISR_preserve_s1, 02        ;Preserve s1 contents during ISR
-                    CONSTANT ISR_preserve_s2, 03        ;Preserve s2 contents during ISR
-                    CONSTANT ISR_preserve_s3, 04        ;Preserve s3 contents during ISR
-                    CONSTANT ISR_preserve_s4, 05
-                    ;CONSTANT ISR_preserve_s5, 06
-                    CONSTANT save_exit_s1,    07
-                    CONSTANT save_exit_s2,    08
-                    CONSTANT save_exit_s3,    09
-                    ;CONSTANT save_exit_s5,    0A
+                    CONSTANT ISR_preserve_s0, 00        ;Preserve s0 contents during ISR
+                    CONSTANT ISR_preserve_s1, 01        ;Preserve s1 contents during ISR
+                    CONSTANT ISR_preserve_s2, 02        ;Preserve s2 contents during ISR
+                    CONSTANT ISR_preserve_s3, 03        ;Preserve s3 contents during ISR
+                    CONSTANT ISR_preserve_s4, 04
+                    CONSTANT ISR_preserve_s5, 05
+                    CONSTANT save_exit_s1,    06
+                    CONSTANT save_exit_s2,    07
+                    CONSTANT save_exit_s3,    08
+                    ;CONSTANT save_exit_s5,   09
 
 
                     CONSTANT LED_pattern, 04            ;remember state of LEDs (8-bit counter in this case)
@@ -253,26 +253,22 @@
                     FETCH s3, save_exit_s3
 
                     INPUT s0, DATA_IN_PORT ; copying the flash input
-                    COMPARE s0, 80 ; checking if the flash value is negative
-                    CALL C, postive
-                    CALL NC, negative
+                    COMPARE s0, 80 ; checking if the flash value is negative ; this could be wrong
+                    JUMP NC, negative
 
 
           postive:  ADD s1, s0 ; add all the flash values till you reach 256
-                    CALL C, carry ; if the carry is 1 then go to carry   
+                    JUMP C, carry ; if the carry is 1 then go to carry   
       
-          after_carry:         
+      after_carry:         
                     ADD s3, 01 ; increment from 0 to 256
-                    CALL C, carry_there_256_reached 
-					;COMPARE s3, 00 ; compare if the increment results to an overflow, which gives 8 bits as 0
-                    ;CALL Z, carry_there_256_reached ; if the s3 == 0, meaning the 256 is reached go to finish
-                    
-					
+                    JUMP C, carry_there_256_reached
+
                     STORE s1, save_exit_s1
                     STORE s2, save_exit_s2
                     STORE s3, save_exit_s3
-					LOAD s3, 00
-					OUTPUT s3, LED_port
+                    ;LOAD s3, 00
+                    ;OUTPUT s3, LED_port
                     FETCH s0, ISR_preserve_s0
                     FETCH s1, ISR_preserve_s1
                     FETCH s2, ISR_preserve_s2
@@ -293,75 +289,64 @@ carry_there_256_reached:
                     ; Use s2, since shifting 8 bits would give s2 values1x
 
                     SL0 s2
-                    CALL C, seventh_bit
-
-                    SL0 s2
-                    CALL C, sixth_bit
-
-                    SL0 s2
-                    CALL C, fifth_bit
-
-                    SL0 s2
-                    CALL C, fourth_bit
-
-                    SL0 s2
-                    CALL C, third_bit
-
-                    SL0 s2
-                    CALL C, second_bit
-
-                    SL0 s2
-                    CALL C, first_bit
-
-                    SL0 s2
-                    CALL C, zeroth_bit
-
-          seventh_bit:  
+                    JUMP NC, sixth_bit
                     LOAD s1, FF
                     OUTPUT s1, LED_port
                     JUMP final
-                   
-          sixth_bit:
+
+            sixth_bit:      
+                    SL0 s2
+                    JUMP NC, fifth_bit
                     LOAD s1, FE
                     OUTPUT s1, LED_port
                     JUMP final
-          
-          fifth_bit:
+
+            fifth_bit:
+                    SL0 s2
+                    JUMP NC, fourth_bit
                     LOAD s1, FC
                     OUTPUT s1, LED_port
                     JUMP final
-          
-          fourth_bit:
+
+            fourth_bit:
+                    SL0 s2
+                    JUMP NC, third_bit
                     LOAD s1, F8
                     OUTPUT s1, LED_port
                     JUMP final
-         
-          third_bit:
+
+            third_bit:
+                    SL0 s2
+                    JUMP NC, second_bit
                     LOAD s1, F0
                     OUTPUT s1, LED_port
                     JUMP final
-         
-          second_bit:
+
+            second_bit:
+                    SL0 s2
+                    JUMP NC, first_bit
                     LOAD s1, E0
                     OUTPUT s1, LED_port
                     JUMP final
-         
-          first_bit: 
+
+            first_bit:
+                    SL0 s2
+                    JUMP NC, zeroth_bit
                     LOAD s1, C0
                     OUTPUT s1, LED_port
                     JUMP final
-         
-          zeroth_bit:
+
+            zeroth_bit:
+                    SL0 s2
+                    JUMP NC, final
                     LOAD s1, 80
                     OUTPUT s1, LED_port
 
-
-
-final:
+       
+			    final:
                     LOAD  s1, 00
                     LOAD  s2, 00
                     LOAD  s3, 00
-                    ;OUTPUT s1, LED_port
                     STORE s1, save_exit_s1
                     STORE s2, save_exit_s2
                     STORE s3, save_exit_s3
